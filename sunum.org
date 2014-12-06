@@ -2,6 +2,7 @@
 #+author: Üstün Özgür
 #+EMAIL: ustun@ustunozgur.com
 #+BEAMER-FRAME-LEVEL: 1
+#+BEAMER_COLOR_THEME: spruce
 #+OPTIONS: toc:f outline:f H:1
 #+LANGUAGE: tr
 
@@ -22,15 +23,14 @@
 - Temelde bir sorgulama dili
 - ilk bakışta göründüğünden daha güçlü bir dil: Turing complete!
 - Sadece tablolar değil: fonksiyonlar ve diğer expressionlar
-- Basit bir örnek:
-:PROPERTIES:
-    :BEAMER_col: 0.45
-    :BEAMER_env: block
-    :END:
+- Nasıldan çok neyi istediğimizi söylediğimiz deklaratif bir dil
+
+* Basit Bir Örnek
+
 - =SELECT sin(pi()/4);=
 - =SELECT generate_series(1,8)=
 - =SELECT sin(2*pi()/i) from generate_series(1,8) as i;=
-- Nasıldan çok neyi istediğimizi söylediğimiz deklaratif bir dil
+
 
 
 * Bir Programlama Dili Olarak SQL
@@ -60,8 +60,7 @@ select numeric_mul(3, 4);
 * Örnek: Faktoriyel Implementasyonu (2/2)
 
 #+BEGIN_SRC sql
-create aggregate function product(numeric)
-   (sfunc=numeric_mul, stype=numeric, initcond=1);
+create aggregate product(numeric) (sfunc=numeric_mul, stype=numeric, initcond=1);
 select product(x) from generate_series(1, 5) as x;
 
 create function myfactorial(i numeric)
@@ -130,8 +129,7 @@ create function myfactorial(i numeric)
 yapabiliriz.
 
 * Performans ipuçları (1/4)
-- Sayfalarınızda toplamda kaç tane SQL sorgusunun gösteren bir araç
-kullanın.
+- Sayfalarınızda toplamda kaç tane SQL sorgusunun gösteren bir araç kullanın.
 - Örneğin Django için django-debug-toolbar.
 - =./manage.py shell_plus --print-sql=
 - psql'de =\timing= kullanımı
@@ -166,9 +164,9 @@ kullanın.
   - =SELECT * FROM pghero_relation_sizes;=
   - =SELECT pghero_index_hit_rate();=
   - =SELECT * FROM pghero_unused_indexes;=
-- Monitoring için NewRelic ya da AppNeta gibi araçlar da production esnasında performans
-sorunlarını takip etmek için kullanılabilir. Bu araçların kurulumu oldukça
-zahmetsiz.
+- Monitoring için NewRelic ya da AppNeta gibi araçlar da production esnasında
+  performans sorunlarını takip etmek için kullanılabilir. Bu araçların kurulumu
+  oldukça zahmetsiz.
 
 * Yedekler (Geliştirme)
 - Development esnasında hızlıca yedek almak için
@@ -230,8 +228,11 @@ echo "create database
 
 #+BEGIN_SRC sql
 create type adres as (sehir text, posta_kodu text);
-create table myuser  (id int primary key, adres adres, isim text);
-insert into myuser(id, adres, isim) values(1, ('Ankara', '06370')::adres, 'Ustun');
+create table myuser  (id int primary key, adres adres,
+                      isim text);
+
+insert into myuser(id, adres, isim) values(1,
+     ('Ankara', '06370')::adres, 'Ustun');
 
 select * from myuser where (adres).sehir='Ankara';
 
@@ -246,39 +247,14 @@ select * from myuser where (adres).sehir='Ankara';
   vermesi
 
 * hstore
-#+BEGIN_SRC sql
-create table myuser_with_hstore(id int primary key, adres hstore, isim text);
-insert into myuser_with_hstore (id, adres, isim)
-     values (1, ARRAY[['sehir', 'Ankara'], ['postaKodu', '06370']]::hstore, 'Ustun');
--- ya da values (1, ARRAY['sehir', 'Ankara', 'postaKodu', '06370']::hstore, 'Ustun');
 
-insert into myuser_with_hstore (id, adres, isim)
-     values (2, ARRAY[['sehir', 'Ankara'], ['postaKodu', '06370']]::hstore, 'Ahmet');
-
-insert into myuser_with_hstore (id, adres, isim)
-     values (3, ARRAY[['sehir', 'Istanbul'], ['postaKodu', '34370']]::hstore, 'Cuneyt');
-
-
-select * from myuser_with_hstore where adres->'sehir'='Ankara';
-#+END_SRC
+- Demo
 
 * json
-#+BEGIN_SRC sql
-insert into myuser_with_json values (1, {'sehir': 'Ankara'}::json, 'Ustun');
-insert into myuser_with_json values (1, {'sehir': 'Ankara'}::json, 'Ustun');
-insert into myuser_with_json values (2, '{"sehir": "Ankara"}'::json, 'Ahmet');
-insert into myuser_with_json values (3, '{"sehir": "Istanbul"}'::json, 'Mehmet');
-select * from myuser_with_json where adres->>'sehir' = 'Ankara';
-#+END_SRC
-
+- Demo
 
 * Array
-#+BEGIN_SRC sql
-create table myuser(id int primary key, name text, hobiler text[]);
-insert into myuser values (1, 'Ustun', ARRAY['Kitap', 'Muzik', 'Resim']);
-insert into myuser values (2, Ahmet', ARRAY['Muzik', 'Resim']);
-select * from myuser where hobiler @> ARRAY['Kitap'];
-#+END_SRC
+- Demo
 
 * Soyutlamalar
 

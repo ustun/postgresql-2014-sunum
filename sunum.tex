@@ -1,4 +1,4 @@
-% Created 2014-12-06 Sat 12:39
+% Created 2014-12-06 Sat 13:06
 \documentclass[presentation]{beamer}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -17,6 +17,7 @@
 \usepackage{hyperref}
 \tolerance=1000
 \usetheme{default}
+\usecolortheme{spruce}
 \author{Üstün Özgür}
 \date{\today}
 \title{Postgresql: Web Programcısı için Gündelik İpuçları \\ Postgres 2014 Türkiye}
@@ -56,8 +57,6 @@
 \item ilk bakışta göründüğünden daha güçlü bir dil: Turing complete!
 \item Sadece tablolar değil: fonksiyonlar ve diğer expressionlar
 \item Basit bir örnek:
-\end{itemize}
-\begin{itemize}
 \item \texttt{SELECT sin(pi()/4);}
 \item \texttt{SELECT generate\_series(1,8)}
 \item \texttt{SELECT sin(2*pi()/i) from generate\_series(1,8) as i;}
@@ -183,10 +182,7 @@ yapabiliriz.
 
 \begin{frame}[fragile,label=sec-12]{Performans ipuçları (1/4)}
  \begin{itemize}
-\item Sayfalarınızda toplamda kaç tane SQL sorgusunun gösteren bir araç
-\end{itemize}
-kullanın.
-\begin{itemize}
+\item Sayfalarınızda toplamda kaç tane SQL sorgusunun gösteren bir araç kullanın.
 \item Örneğin Django için django-debug-toolbar.
 \item \texttt{./manage.py shell\_plus -{}-print-sql}
 \item psql'de \texttt{\textbackslash{}timing} kullanımı
@@ -233,10 +229,10 @@ göstereceksiniz.
 \item \texttt{SELECT pghero\_index\_hit\_rate();}
 \item \texttt{SELECT * FROM pghero\_unused\_indexes;}
 \end{itemize}
-\item Monitoring için NewRelic ya da AppNeta gibi araçlar da production esnasında performans
+\item Monitoring için NewRelic ya da AppNeta gibi araçlar da production esnasında
+performans sorunlarını takip etmek için kullanılabilir. Bu araçların kurulumu
+oldukça zahmetsiz.
 \end{itemize}
-sorunlarını takip etmek için kullanılabilir. Bu araçların kurulumu oldukça
-zahmetsiz.
 \end{frame}
 
 \begin{frame}[fragile,label=sec-17]{Yedekler (Geliştirme)}
@@ -317,8 +313,11 @@ performanslı kaldığı noktaları vurgulamaktadır.
 
 \begin{verbatim}
 create type adres as (sehir text, posta_kodu text);
-create table myuser  (id int primary key, adres adres, isim text);
-insert into myuser(id, adres, isim) values(1, ('Ankara', '06370')::adres, 'Ustun');
+create table myuser  (id int primary key, adres adres,
+                      isim text);
+
+insert into myuser(id, adres, isim) values(1,
+     ('Ankara', '06370')::adres, 'Ustun');
 
 select * from myuser where (adres).sehir='Ankara';
 \end{verbatim}
@@ -336,16 +335,22 @@ vermesi
 
 \begin{frame}[fragile,label=sec-25]{hstore}
  \begin{verbatim}
-create table myuser_with_hstore(id int primary key, adres hstore, isim text);
-insert into myuser_with_hstore (id, adres, isim)
-     values (1, ARRAY[['sehir', 'Ankara'], ['postaKodu', '06370']]::hstore, 'Ustun');
--- ya da values (1, ARRAY['sehir', 'Ankara', 'postaKodu', '06370']::hstore, 'Ustun');
+create table myuser_with_hstore(
+           id int primary key,
+           adres hstore, isim text);
+insert into myuser_with_hstore (id, isim, adres)
+ values (1, 'Ustun'
+ ARRAY[['sehir', 'Ankara'], ['postaKodu', '06370']]::hstore);
+-- ya da values (1,  'Ustun',
+ARRAY['sehir', 'Ankara', 'postaKodu', '06370']::hstore);
+
+insert into myuser_with_hstore (id, isim, adres)
+ values (2, 'Ahmet',
+ARRAY[['sehir', 'Ankara'], ['postaKodu', '06370']]::hstore);
 
 insert into myuser_with_hstore (id, adres, isim)
-     values (2, ARRAY[['sehir', 'Ankara'], ['postaKodu', '06370']]::hstore, 'Ahmet');
-
-insert into myuser_with_hstore (id, adres, isim)
-     values (3, ARRAY[['sehir', 'Istanbul'], ['postaKodu', '34370']]::hstore, 'Cuneyt');
+ values (3, , 'Cuneyt',
+ ARRAY[['sehir', 'Istanbul'], ['postaKodu', '34370']]::hstore);
 
 
 select * from myuser_with_hstore where adres->'sehir'='Ankara';
@@ -444,12 +449,11 @@ insert into kutuphane_odunc_kitaplar values (1,1), (2,2);
 \end{verbatim}
 \end{frame}
 
-\begin{frame}[label=sec-34]{Örneğe Devam}
-\begin{proof}
-
-
-from kutuphane$_{\text{odunc}}$$_{\text{kitaplar}}$ o, kutuphane$_{\text{kullanici}}$ k, kutuphane$_{\text{kitap}}$ ki
- where o.kullanici$_{\text{id}}$=k.id and ki.id=kitap$_{\text{id}}$;
+\begin{frame}[fragile,label=sec-34]{Örneğe Devam}
+ \begin{verbatim}
+# select k.name as KullaniciAdi, ki.name as KitapAdi
+from kutuphane_odunc_kitaplar o, kutuphane_kullanici k, kutuphane_kitap ki
+ where o.kullanici_id=k.id and ki.id=kitap_id;
  kullaniciadi |      kitapadi
 --------------+---------------------
  Ustun        | Anna Karenina
@@ -457,7 +461,7 @@ from kutuphane$_{\text{odunc}}$$_{\text{kitaplar}}$ o, kutuphane$_{\text{kullani
 (2 rows)
 
 Time: 1.296 ms
-\end{proof}
+\end{verbatim}
 \end{frame}
 
 \begin{frame}[fragile,label=sec-35]{Örneğe Devam}
