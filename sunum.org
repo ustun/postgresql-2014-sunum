@@ -1,34 +1,47 @@
 #+title: Postgresql: Web Programcısı için Gündelik İpuçları \\ Postgres 2014 Türkiye
 #+author: Üstün Özgür
+#+EMAIL: ustun@ustunozgur.com
+#+BEAMER-FRAME-LEVEL: 1
+#+OPTIONS: toc:f outline:f H:1
 #+LANGUAGE: tr
 
 * Giriş
 
-Günümüzde pek çok web yazılım mimarisi MVC mimarisini kullanmakta. Java için
-Spring, Ruby için Rails, Python için Django gibi. Bu mimarilerin genel bir
-özelliği de ORM kullanımını popülerleştirmeleri. ORM işlerin çoğunu
-kolaylaştırsa da programcı ile veritabanı arasında bir duvar
-oluşturmakta. Halbuki bu yapılan web uygulamalarında temel amaç zaten verinin
-saklanması, bu noktada veritabanının programcı tarafından dert edilmemesi
-gereken bir araç olduğu kanısı baş ağrıtmakta.
+- Web uygulama çatıları (frameworkler)
 
-Bu sunumda bir web programcısının bilmesi gereken Postgres kavramları ve
-ipuçlarına değineceğim.
+- MVC
+  - Java Spring + Hibernate, Python Django, Ruby Rails
+- ORM (Nesne-İlişkisel Dönüşümü)
+  - Bu dönüşüm esnasında yaşanan impedance mismatch
+- Veritabanından uzak geliştiriciler
+- Veritabanı uygulamanın en önemli parçalarından biri, belki de en önemlisi
+- Web programlaması için önemli Postgres kavramları ve ipuçları
 
 * SQL Bir Programlama Dilidir
 
-SQL temelde relation denilen ilişkilere yönelik bir sorgulama dili olsa da
-aslında ilk bakışta göründüğünden daha güçlü bir dil. Nasıldan çok neyi
-istediğimizi söylediğimiz deklaratıf bir dil.
+- Temelde bir sorgulama dili
+- ilk bakışta göründüğünden daha güçlü bir dil: Turing complete!
+- Sadece tablolar değil: fonksiyonlar ve diğer expressionlar
+- Basit bir örnek:
+:PROPERTIES:
+    :BEAMER_col: 0.45
+    :BEAMER_env: block
+    :END:
+- =SELECT sin(pi()/4);=
+- =SELECT generate_series(1,8)=
+- =SELECT sin(2*pi()/i) from generate_series(1,8) as i;=
+- Nasıldan çok neyi istediğimizi söylediğimiz deklaratif bir dil
 
 
-** Bir Programlama Dili Olarak SQL
+* Bir Programlama Dili Olarak SQL
 
 - İlişkiler üzerinde operasyonlar
 - Genelde sütun bazında operasyonlar: Yüksek seviye fonksiyonlar
 - Yanlış bir tabir de olsa SQL için fonksiyonel diyebiliriz
 - Üç temel yüksek seviye fonksiyon: Map, Filter, Reduce
 - SQL hepsini sağlıyor.
+
+* Map, Filter, Reduce
 - Map =SELECT foo(x) from table=;
 - foo fonksiyonunu bütün x değerleri için uygula
 - =SELECT foo(x) from table where predicate(x)= dediğimizde
@@ -36,101 +49,184 @@ filter'a denk şekilde bir predicate fonksiyonu uygular. (Predicate fonksiyon
 boolean dönen fonksiyon)
 - Eğer foo aggregate yapıda bir fonksiyon ise de reduce'a denktir diyebiliriz.
 
-
-** Örnek: Faktoriyel Implementasyonu
+* Örnek: Faktoriyel Implementasyonu (1/2)
 #+BEGIN_SRC sql
 select generate_series(1, 10);
 select generate_series(1, 10, 2);
 select 3 * 4;
 select numeric_mul(3, 4);
+#+END_SRC
+
+* Örnek: Faktoriyel Implementasyonu (2/2)
+
+#+BEGIN_SRC sql
 create aggregate function product(numeric)
    (sfunc=numeric_mul, stype=numeric, initcond=1);
 select product(x) from generate_series(1, 5) as x;
-create function myfactorial(i numeric) returns integer as 'select product(x)
-from generate_series(1, i::integer) as x;' language sql;
 
+create function myfactorial(i numeric)
+   returns integer
+   as 'select product(x)
+        from generate_series(1, i::integer) as x;'
+   language sql;
 #+END_SRC
 
-Trivia: Postgresql'de kac tane fonksiyon vardir?
+* Trivia: Postgresql'de kac tane fonksiyon vardir?
 
 #+BEGIN_SRC sql
 \df
 \set ECHO_HIDDEN
 #+END_SRC
 
-** psql
+* psql
 
-Postgresql için birçok GUİ client'i var, bunları kullanmak zaman zaman daha
-kullanışlı olabilir; ancak psql aracını kullanmayı bilmek çok önemlidir. psql
-aracının rahat kullanımı denemeler yapmayı kolaylaştıracak ve SQL pratiği yapmak
-açısından faydalı olacaktır.
+- "In the beginning, there was the command line."
+- GUI'leri tercih etseniz de ogrenilmesi cok yararli
+- Kolay denemeler, SQL pratigi
+- En önemli psql komutları:
+  - =\h= : SQL komutlari hakkinda bilgi
+    Or: =\h CREATE TABLE=
+  - =\?= : psql komutlari hakkinda bilgi
 
-Önemli psql komutları: En önemli psql komutları =\h= ve =\?='dır. Bu iki komut ile
-yapılacak her şey ile ilgili bilgi almak mümkün. =\h= ile sql komutları hakkında
-bilgi alınırken =\?= ile psql'e özel komutlar hakkında bilgi alınabilir.
-
+* psql demo
 
 #+BEGIN_SRC
 \h
 \h CREATE
 \h CREATE TABLE
-\h ALTER TRİGGER
+\h ALTER TRIGGER
 #+END_SRC
 
-Psql'a ait özel komutlar \ ile başlar ve bunlarla veritabanımız hakkında hızlıca
-bilgi alabiliriz.
+- Psql'a ait özel komutlar \ ile başlar
 
+* psql komutlari demo
 #+BEGIN_SRC
-\l
-\d
-\d+
-\df
-\dft
-\e
-\o
-\H
-\! make_pretty_table foo.html
+| \l       | Bütün veritabanlari     |
+| \d       | Bütün tablolar, viewlar |
+| \d+      | Daha ayrıntılı bilgi    |
+| \df      | Kullanıcı Fonksiyonları |
+| \dfS     | Sistem fonksiyonlari    |
+| \dft     | Triggerlar              |
+| show all | Bütün ayarlar           |
+| \e       | Edit                    |
+| \o       | Çıktı dosyası belirleme |
+| \H       | HTML tablo çıktısı      |
 #+END_SRC
 
 
-Kısa bir dipnot: =~/.psqlrc='ye koyacağımız komutlar başlangıçta
-çalıştırılacaktır. =Ctrl-r= ile shell'deki gibi eski komutlar arasında arama
-yapabiliriz.
+=\!  make_pretty_table foo.html=
+
+
+* .psqlrc dosyasi
+
+- Bu komutlar başlangıçta çalıştırılacaktır.
 
 #+BEGIN_SRC sql
 \x auto
 \timing
 #+END_SRC
 
+-  =Ctrl-r= ile shell'deki gibi eski komutlar arasında arama
+yapabiliriz.
+
+* Performans ipuçları (1/4)
+- Sayfalarınızda toplamda kaç tane SQL sorgusunun gösteren bir araç
+kullanın.
+- Örneğin Django için django-debug-toolbar.
+- =./manage.py shell_plus --print-sql=
+- psql'de =\timing= kullanımı
+- =ANALYZE= ve =EXPLAIN ANALYZE= komutu ve index ekleme
+- =log_collector= ile yapilan SQL sorgularinin ve sürelerinin kaydedilmesi
+
+* Performans ipuçları (2/5)
+- ORM'lerde olabilecek en büyük sorun N+1 sorguları.
+- Örneğin N tane soru göstereceksiniz, bu soruları soran kişinin de ismini
+  göstereceksiniz.
+- N+1 tehlikesine çok müsait.
+- Django için =select_related= ve =prefetch_related=
+
+* Performans ipuçları (3/5)
+- Bağlantı havuzu: Bağlantıların kurulması çok fazla zaman alabilir.
+- pgbouncer gibi bir bağlantı havuzu sağlayın. Kurulması oldukça kolay.
+- pgtune uygulaması: Postgres'in default konfigürasyonu oldukça verimsiz
+- Sessionları veritabanında tutmak yerine redis'te tutmak
+
+* Performans ipuçları (4/5)
+
+- Makineye göre optimize etmek için https://github.com/gregs1104/pgtune
+- Web versiyonu http://pgtune.leopard.in.ua/
+
+[[./pgtune.png]]
+
+
+* Performans ipuçları (5/5)
+
+- Pghero: https://github.com/ankane/pghero
+  - =SELECT * FROM pghero_missing_indexes;=
+  - =SELECT * FROM pghero_relation_sizes;=
+  - =SELECT pghero_index_hit_rate();=
+  - =SELECT * FROM pghero_unused_indexes;=
+- Monitoring için NewRelic ya da AppNeta gibi araçlar da production esnasında performans
+sorunlarını takip etmek için kullanılabilir. Bu araçların kurulumu oldukça
+zahmetsiz.
+
+* Yedekler (Geliştirme)
+- Development esnasında hızlıca yedek almak için
+
+- =CREATE DATABASE foo with TEMPLATE bar;=
+
+* Yedekler (Geliştirme)
+#+BEGIN_SRC shell
+DB_NAME=mydb
+echo "SELECT pg_terminate_backend(pid)
+   FROM pg_stat_activity WHERE pid <>
+   pg_backend_pid() AND datname = '${DB_NAME}';" | psql
+echo "create database
+   ${DB_NAME}_$(date '+%Y%m%d_%H%M%S')
+   with template ${DB_NAME}" | psql
+
+#+END_SRC
+
+* Yedekler (Production'da)
+- En azından =pg_dump= ile günlük backuplar alın ve başka bir makineye (S3 vs.) gönderin.
+- Streaming replication yapabilirsiniz, son Postgres sürümlerinde bu oldukça
+  kolaylaştı
+- Josh Berkus'un "Ten Minutes to Replication" sunumu
+- http://www.youtube.com/watch?v=BD7i9QImqic
+
 
 * NoSQL desteği
 
-Postgres bir object-relational veritabanidir. Relational oldugunu zaten biliyoruz,
-ancak neden object-relational diye isimlendirilmekte? Bunun nedeni biraz da
-politik ve finansal. Basindan beri
+- Postgres bir object-relational veritabanıdır.
+- Object-relational?
+- Extended relational
+- Postgres'in tasarımının anlatıldığı ilk makale Stonebreaker
+- Postgres'in ilk hedefi olarak ilişkisel veritabanlarının yetersiz ya da düşük
+  performanslı kaldığı noktaları vurgulamaktadır.
 
+* Örnek Uygulama
 
-Postgres'in tasariminin anlatildigi ilk makalede Stonebreaker, Postgres'in ilk
-hedefi olarak iliskisel veritabanlarinin yetersiz ya da dusuk performansli
-kaldigi noktalari vurgulamaktadir. Ornegin bir Kullanici-Adres iliskisi
-dusunelim. Her kullanicinin tek bir adresi olsun. Adresin de kendi icinde birden
-fazla alani olsun, ornegin sehir ve posta kodu gibi.
+- Bir Kullanıcı-Adres ilişkisi
+- Her kullanıcının tek bir adresi olsun
+- Adresin de kendi içinde birden fazla alanı olsun, örneğin şehir ve posta kodu gibi.
 
-Bu durum, genel olarak normalize edilmis bir veritabaninda iki ayri tablo olarak
-gerceklenir. Ancak bazi durumlarda bunun ayri bir tabloda tutulmasina gerek
-yoktur. Bunun icin birkac farkli cozum dusunulebilir.
+- Normalize edilmiş bir veritabanında iki ayrı tablo
+- Çoğu zaman doğru çözüm
+- Bazen farklı bir çözüm gerekir: Aynı tabloda tutmak
 
-Oncelikle, Kullanici tablosuna sehir ve posta kodu alanlari eklenebilir. Ancak
-bu cozumde kullanici tablosuna cok fazla alan eklenecektir. Diger bir cozum,
-adres bilgisinin bir metne donusturulup adres adinda bir metin alaninda
-saklanabilir. Bu durumda ise veriyi sorgulamak zorlasacaktir, sorgu yapmak icin
-like ya da regular expression kullanmak gerekebilir.
+* Farklı Çözümler
+- Çözüm 1:
+  - Kullanıcı tablosuna şehir ve posta kodu alanları eklenebilir
+  - Çok fazla alan
+- Çözüm 2:
+  - adres bilgisinin bir metne dönüştürülmesi
+  - zor veri sorgulaması, =LİKE= veya regular expression kullanımı
 
-** Composite Types
+* Composite Types
 
-Postgres'in eskiden beri sundugu bir cozum ise composite type. Composite type'i
-tek bir alanda birden fazla veri saklamak icin kullanabiliriz. Aslinda Postgres,
-her tablo olusturuldugunda o tablo icin bir de type uretir.
+- Tek bir alanda birden fazla veri saklamak için
+- Her tablo için bir de type üretir
+- Kendimiz de type tanımlayabiliriz
 
 #+BEGIN_SRC sql
 create type adres as (sehir text, posta_kodu text);
@@ -141,15 +237,16 @@ select * from myuser where (adres).sehir='Ankara';
 
 #+END_SRC
 
-** hstore ve json
+* hstore ve json
 
-Son yillarda ise buna iki yeni secenek eklendi: hstore ve json. Hatta 9.4'te
-jsonb (binary json) destegi de gelmekte. Bunlarin temel composite type'tan temel
-farki composite type'a gore alanlarin onceden belirlenmemesi. hstore ile json'un
-temel farki ise hstore'un sadece tek seviye iliskiye izin vermesi.
+- hstore ve json
+- 9.4'te jsonb (binary json)
+- Alan adları esnek
+- hstore ile json'un temel farki ise hstore'un sadece tek seviye ilişkiye izin
+  vermesi
 
-** hstore
-#+BEGIN_SRC
+* hstore
+#+BEGIN_SRC sql
 create table myuser_with_hstore(id int primary key, adres hstore, isim text);
 insert into myuser_with_hstore (id, adres, isim)
      values (1, ARRAY[['sehir', 'Ankara'], ['postaKodu', '06370']]::hstore, 'Ustun');
@@ -165,103 +262,133 @@ insert into myuser_with_hstore (id, adres, isim)
 select * from myuser_with_hstore where adres->'sehir'='Ankara';
 #+END_SRC
 
-** json
-
-
-** Array
-
-* Performans ipuçları
-
-Sayfalarınızda toplamda kaç tane SQL sorgusunun gösteren bir araç
-kullanın. Örneğin Django için django-debug-toolbar.
-
-psql'de =\timing= kullanımı, =ANALYZE= ve =EXPLAIN ANALYZE= komutu ve buna göre index
-ekleme.
-
-ORM'lerde olabilecek en büyük sorun N+1 sorguları. Örneğin N tane soru
-göstereceksiniz, bu soruları soran kişinin de ismini göstereceksiniz. N+1
-tehlikesine çok müsait. Django için =select_related= ve =prefetch_related= bunları
-azaltacaktır.
-
-Bağlantı havuzu: Bağlantıların kurulması çok fazla zaman alabilir. Mutlaka
-pgbouncer gibi bir bağlantı havuzu sağlayın. Kurulması oldukça kolay.
-
-pgtüne uygulaması: Postgres'in default konfigürasyonu oldukça muhafazakar bir
-şekilde hazırlanmıştır, bunu makineye göre optimize etmek için
-https://github.com/gregs1104/pgtune ve Web versiyonu
-http://pgtune.leopard.in.ua/
-
-[[./pgtune.png]]
-
-Sessionları veritabanında tutmak yerine redis gibi ikinci bir araçta
-tutabilirsiniz.
-
-Pghero: https://github.com/ankane/pghero
-
-- SELECT * FROM pghero_missing_indexes;
-- SELECT * FROM pghero_relation_sizes;
-- SELECT pghero_index_hit_rate();
-- SELECT * FROM pghero_unused_indexes;
-
-Monitoring için NewRelic ya da AppNeta gibi araçlar da production esnasında performans
-sorunlarını takip etmek için kullanılabilir. Bu araçların kurulumu oldukça
-zahmetsiz.
-
-* Soyutlamalar
-
-** Views
-
-Veriler gerçek bir tabloda saklanmaz, diğer sorgular için bir kısayol olarak
-düşünülebilir. Örneğin Kullanıcı tablomuzda aktif olup olmadığını gösteren bir
-sütun olsun. Aktif kullanıcılar arasında bir sorgu yapmak için her seferinde
-
-SELECT * FROM Kullanici WHERE active=t yerine
-
-bu sorguyu soyutlayan AktifKullanıcı adında bir view oluşturabiliriz.
-
-CREATE VIEW AktifKullanici AS SELECT * FROM Kullanici WHERE active=t;
-
-Artık AktifKullanıcı viewini bir tabloymuşçasına sorgularımızda
-kullanabiliriz. Sorgu esnasında gerçek tablolara yine başvurulacaktır.
-
-Viewların SQL'e göre güzel bir özelliği daha composable olmasıdır. Örneğin,
-ikinci bir WHERE sorgusuyla son hafta eklenmiş aktif kullanıcıları bulalım.
-
-SELECT * FROM AktifKullanici WHERE tarih_eklenme > now() - '1 week'::interval;
-
-Burada arka planda iki WHERE clause'i birleştirilmiş oldu. SQL ile benzer bir
-zincirleme yapmak için string manipülasyonu yapmamız gerekecekti. Aslında ORM'in
-popülerleşmesindeki SQL'in bu zaafı da rol oynamaktadır.
-
-** Materialized Views
-
-9.3'le birlikte geldi, sorgu sonuçları gerçek tablolarda saklanır. Ancak sorgu
-sonuçlarının kaynak verişi değişirse materialized view'daki veriler otomatik
-olarak güncellenmez. Şu an için materialized viewların periyodik olarak ya da
-bir trigger sonrasında elle güncellenmesi gerekmektedir.
-
-* Yedekler
-Development esnasinda hizlica yedek almak icin
-
-CREATE DATABASE foo with TEMPLATE bar;
-
-Biraz daha guzel bir yontem
-#+BEGIN_SRC shell
-DB_NAME=mydb
-echo "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <>
-pg_backend_pid() AND datname = '${DB_NAME}';" | psql
-echo "create database ${DB_NAME}_$(date '+%Y%m%d_%H%M%S') with template ${DB_NAME}" | psql
-
+* json
+#+BEGIN_SRC sql
+insert into myuser_with_json values (1, {'sehir': 'Ankara'}::json, 'Ustun');
+insert into myuser_with_json values (1, {'sehir': 'Ankara'}::json, 'Ustun');
+insert into myuser_with_json values (2, '{"sehir": "Ankara"}'::json, 'Ahmet');
+insert into myuser_with_json values (3, '{"sehir": "Istanbul"}'::json, 'Mehmet');
+select * from myuser_with_json where adres->>'sehir' = 'Ankara';
 #+END_SRC
 
 
-En azından =pg_dump= ile günlük backuplar alın ve başka bir makineye (S3 vs.)
-gönderin.
+* Array
+#+BEGIN_SRC sql
+create table myuser(id int primary key, name text, hobiler text[]);
+insert into myuser values (1, 'Ustun', ARRAY['Kitap', 'Muzik', 'Resim']);
+insert into myuser values (2, Ahmet', ARRAY['Muzik', 'Resim']);
+select * from myuser where hobiler @> ARRAY['Kitap'];
+#+END_SRC
 
-Projenin kritikliğine göre streaming replication yapabilirsiniz, son
-Postgres sürümlerinde bu oldukça kolaylaştı. Bu konuda Josh Berkus'un "Ten
-Minutes to Replication" sunumunu
-izleyin. http://www.youtube.com/watch?v=BD7i9QImqic
+* Soyutlamalar
+
+- Views
+- Materialized Views
+
+* Views
+
+- Gerçek tablo değil
+- Bir query'ye isim verip soyutlamak
+- Örneğin Kullanıcı tablomuzda aktif olup olmadığını gösteren bir
+sütun olsun.
+- =SELECT * FROM Kullanici WHERE active=t=
+- =CREATE VIEW AktifKullanici AS SELECT * FROM Kullanici WHERE active=t;=
+- =SELECT * From AktifKullanıcı=
+- SQL'e göre güzel bir özelliği daha composable olmasıdır
+- Örnek: son hafta eklenmiş aktif kullanıcılar
+- =SELECT * FROM AktifKullanici WHERE tarih_eklenme > now() - '1 week'::interval;=
+- Zincirleme
+
+* Daha Mantıklı Bir View Örneği
+
+- Kütüphane uygulaması
+- Kullanıcılar ve Kitaplar
+- Ödünç alınan kitaplar tablosu
+- Normalize olursa sadece kullanıcı ve kitap id'lerini görebiliriz
+- Kullanıcı adı ve ödünç aldıkları kitapları görmek için bir view yazalım.
+
+* Örneğe Devam
+
+#+ATTR_LATEX: :width .6\textwidth
+#+ATTR_LATEX: :float nil
+#+BEGIN_SRC
+create table kutuphane_kullanici (id serial primary key, name text);
+create table kutuphane_kitap (id serial primary key, name text);
+create table kutuphane_odunc_kitaplar
+   (id serial primary key,
+   kullanici_id int references kutuphane_kullanici,
+   kitap_id int references kütüphane_kitap);
+#+END_SRC
+
+* Örneğe Devam
+
+#+BEGIN_SRC
+insert into kutuphane_kullanici(name) values ('Üstün'), ('Ahmet');
+insert into kutuphane_kitap(name) values ('Anna Karenina'), ('Karamazov Kardeşler');
+insert into kutuphane_odunc_kitaplar values (1,1), (2,2);
+#+END_SRC
+
+* Örneğe Devam
+
+#+BEGIN_SRC
+# select * from kutuphane_odunc_kitaplar;
+ id | kullanici_id | kitap_id
+----+--------------+----------
+  1 |            1 |   1
+  2 |            2 |   2
+# select k.name, ki.name from kutuphane_odunc_kitaplar o,
+ kutuphane_kullanici k,  kutuphane_kitap ki
+ where o.kullanici_id=k.id and ki.id=kitap_id;
+ name  |        name
+-------+---------------------
+ Ustun | Anna Karenina
+ Ahmet | Karamazov Kardesler
+(2 rows)
+#+END_SRC
+
+* Örneğe Devam
+#+BEGIN_SRC
+
+# select k.name as KullaniciAdi, ki.name as KitapAdi
+from kutuphane_odunc_kitaplar o, kutuphane_kullanici k, kutuphane_kitap ki
+ where o.kullanici_id=k.id and ki.id=kitap_id;
+ kullaniciadi |      kitapadi
+--------------+---------------------
+ Ustun        | Anna Karenina
+ Ahmet        | Karamazov Kardesler
+(2 rows)
+
+Time: 1.296 ms
+#+END_SRC
+
+* Örneğe Devam
+#+BEGIN_SRC
+# create view OduncKitaplar as select k.name as KullaniciAdi,
+ki.name as KitapAdi from kutuphane_odunc_kitaplar o,
+kutuphane_kullanici k, kutuphane_kitap ki
+ where o.kullanici_id=k.id and ki.id=kitap_id;
+CREATE VIEW
+Time: 7.588 ms
+# select * from OduncKitaplar;
+ kullaniciadi |      kitapadi
+--------------+---------------------
+ Ustun        | Anna Karenina
+ Ahmet        | Karamazov Kardesler
+(2 rows)
+#+END_SRC
+
+* Materialized Views
+
+- 9.3
+- Sorgu sonuçları gerçek tablolarda saklanır
+- Otomatik güncelleme şu an yok
+- Periyodik olarak ya da bir trigger sonrasında elle güncelleme
+
+* Trigger ve Audit Tabloları
+- Yapılan her INSERT, UPDATE, DELETE sonrası bir işlem çalıştırmak
+- Audit tablosu: Önemli tablolara ek bir tablo. Yapılan işlemin kaydını
+  tutuyor.
+- Hatalı veri kaydına karşı bir koruma sağlar
 
 * Yararlanabileceginiz Kaynaklar
 - Resmi dokumanlar harika
@@ -269,3 +396,9 @@ izleyin. http://www.youtube.com/watch?v=BD7i9QImqic
 - postgres guide
 - postgres planet
 - kitaplar: High Performance Postgres
+
+
+* Teşekkürler
+
+- ustun@ustunozgur.com
+- https://github.com/ustun/postgres-2014
